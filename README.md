@@ -1,4 +1,4 @@
-# GUI Designer for Python Scripts (PyQt6)
+# ScriptForge Studio (PyQt6)
 
 A drag-and-drop GUI builder that lets you load any Python script, design a custom PyQt6 interface, and generate a merged output script.
 
@@ -90,7 +90,7 @@ The script is intentionally structured so you can keep pushing it further:
 
 ```text
 .
-├── gui_designer.py
+├── scriptforge_studio.py
 └── README.md
 ```
 
@@ -104,12 +104,12 @@ Install dependencies (PyQt6):
 pip install PyQt6
 ```
 
-Save the script as `gui_designer.py`.
+Save the script as `scriptforge_studio.py`.
 
 Run it:
 
 ```bash
-python gui_designer.py
+python scriptforge_studio.py
 ```
 
 Drop any `.py` file into the central area.
@@ -127,16 +127,16 @@ Create a Dockerfile:
 ```dockerfile
 FROM python:3.10-slim
 RUN pip install PyQt6
-COPY gui_designer.py /app/
 WORKDIR /app
-CMD ["python", "gui_designer.py"]
+COPY scriptforge_studio.py /app/
+CMD ["python", "scriptforge_studio.py"]
 ```
 
 Build and run:
 
 ```bash
-docker build -t gui-designer .
-docker run -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix gui-designer
+docker build -t scriptforge-studio .
+docker run -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix scriptforge-studio
 ```
 
 (You may need to allow X11 forwarding.)
@@ -147,10 +147,16 @@ Use pyinstaller to create a standalone executable, then package it.
 
 ```bash
 pip install pyinstaller
-pyinstaller --onefile --windowed gui_designer.py
+pyinstaller --onefile --windowed scriptforge_studio.py
 ```
 
 Then use `fpm` or `rpmbuild` to create an RPM.
+
+Current packaged artifact name:
+
+```text
+dist/ScriptForge-Studio.zip
+```
 
 ---
 
