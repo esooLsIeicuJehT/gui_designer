@@ -93,6 +93,23 @@ STYLE_PRESETS = {
 
 
 def default_widget(widget_type: str, idx: int) -> dict[str, Any]:
+    """
+    Create a default widget-spec dictionary for a widget type and 1-based index.
+    
+    Parameters:
+        widget_type (str): Widget type label used for `type`, `label`, and to derive `name`.
+        idx (int): 1-based index appended to `name` and `label`.
+    
+    Returns:
+        dict[str, Any]: A widget specification containing:
+            - "type": the provided widget_type
+            - "name": generated identifier (lowercased, spaces replaced with underscores, suffixed with `_{idx}`)
+            - "label": human-readable label in the form "{widget_type} {idx}"
+            - "placeholder": empty string
+            - "min": 0
+            - "max": 100
+            - "required": False
+    """
     return {
         "type": widget_type,
         "name": f"{widget_type.lower().replace(' ', '_')}_{idx}",
@@ -105,6 +122,12 @@ def default_widget(widget_type: str, idx: int) -> dict[str, Any]:
 
 
 def yaml_available() -> bool:
+    """
+    Check whether the PyYAML `yaml` module is available for import.
+    
+    Returns:
+        bool: `True` if the `yaml` module can be imported, `False` otherwise.
+    """
     try:
         import yaml  # type: ignore # noqa: F401
 
@@ -115,6 +138,14 @@ def yaml_available() -> bool:
 
 class DropArea(QLabel):
     def __init__(self, main_window: "MainWindow"):
+        """
+        Create a drop area label configured to accept a Python file via drag-and-drop and associated with the given main window.
+        
+        Initializes the QLabel with centered instructional text, enables drag-and-drop, sets a minimum height and dashed border styling, and stores a reference to `main_window` for handling dropped files.
+        
+        Parameters:
+            main_window (MainWindow): Parent/main application window used to handle a dropped .py file (via its `load_script` method).
+        """
         super().__init__("Drop your Python file here\n(.py)")
         self.main_window = main_window
         self.setAcceptDrops(True)
@@ -123,10 +154,24 @@ class DropArea(QLabel):
         self.setStyleSheet("border: 3px dashed #8a8a8a; border-radius: 10px; padding: 38px;")
 
     def dragEnterEvent(self, event: QDragEnterEvent):
+        """
+        Accept the proposed drag action when the incoming drag contains one or more URLs.
+        
+        Parameters:
+            event (QDragEnterEvent): The drag-enter event to evaluate and potentially accept.
+        """
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
 
     def dropEvent(self, event: QDropEvent):
+        """
+        Handle a drop event by loading the first dropped Python (.py) file into the main window.
+        
+        If one or more file URLs are present in the event's mime data, the first path ending with ".py" is loaded via self.main_window.load_script(path) and the label text is updated to "Loaded: <filename>". The event's proposed action is accepted.
+        
+        Parameters:
+            event (QDropEvent): The drop event containing mime data with URLs.
+        """
         for url in event.mimeData().urls():
             path = url.toLocalFile()
             if path.endswith(".py"):
@@ -149,6 +194,14 @@ class PropertyEditor(QWidget):
     ]
 
     def __init__(self, main_window: "MainWindow"):
+        """
+        Create and initialize the PropertyEditor UI, build its tabs, and connect update handlers.
+        
+        Initializes internal state (holds a reference to `main_window` and an empty `widgets` list), constructs the six tabs (Style, Layout, Widgets, Preview, Code, Assistant), places the tab widget into the editor's root layout, and registers change listeners that propagate edits back to the main window.
+        
+        Parameters:
+            main_window (MainWindow): The parent main window used for callbacks and design synchronization.
+        """
         super().__init__(main_window)
         self.main_window = main_window
         self.widgets: list[dict[str, Any]] = []
@@ -167,6 +220,11 @@ class PropertyEditor(QWidget):
         self._wire_updates()
 
     def _style_tab(self):
+        """
+        Create and add the "Style" tab to the editor, providing controls for window title, background and accent color selection, theme selection, and button style selection.
+        
+        The tab initializes default values for the window title, background/accent color labels, and theme/button-style choices, and connects the background and accent color buttons to the color picker handler (`_pick_color`).
+        """
         tab = QWidget()
         form = QFormLayout(tab)
         self.window_title = QLineEdit("My Custom GUI")
@@ -192,6 +250,13 @@ class PropertyEditor(QWidget):
         self.tabs.addTab(tab, "Style")
 
     def _layout_tab(self):
+        """
+        Create and populate the "Layout" tab with controls for selecting container layout and its parameters.
+        
+        Adds controls for layout type (Vertical/Horizontal/Grid/Tabbed), tab position (North/South/West/East),
+        number of grid columns, margin, and spacing. Wires layout-type changes to `_layout_mode_sync`
+        and inserts the completed tab into the tab widget as "Layout".
+        """
         tab = QWidget()
         form = QFormLayout(tab)
         self.layout_type = QComboBox()
@@ -218,6 +283,11 @@ class PropertyEditor(QWidget):
         self.tabs.addTab(tab, "Layout")
 
     def _widgets_tab(self):
+        """
+        Create the "Widgets" tab UI for adding, editing, and managing widget specifications.
+        
+        This tab provides a catalog of available widget types (double-click to add), a list of added widgets (selection loads the widget's properties), controls to remove or clear added widgets, and a component property editor with fields for name, label/text, placeholder, minimum, maximum, and required flag. Changes in the property editor are applied with the "Apply Widget Properties" button.
+        """
         tab = QWidget()
         h = QHBoxLayout(tab)
 
@@ -267,6 +337,14 @@ class PropertyEditor(QWidget):
         self.tabs.addTab(tab, "Widgets")
 
     def _preview_tab(self):
+        """
+        Create and add the "Preview" tab to the property editor, providing starter preset selection, a read-only design preview, and a button to open a live preview.
+        
+        The tab contains:
+        - a combo box to choose a starter preset and an "Apply Starter" button wired to apply_starter,
+        - a read-only text area showing the serialized/current design,
+        - an "Open Live Preview" button that opens the live PreviewWindow via main_window.open_live_preview.
+        """
         tab = QWidget()
         v = QVBoxLayout(tab)
         self.preview_text = QTextEdit()
@@ -289,6 +367,15 @@ class PropertyEditor(QWidget):
         self.tabs.addTab(tab, "Preview")
 
     def _code_tab(self):
+        """
+        Create and add the "Code" tab containing a read-only, monospace code preview and action buttons.
+        
+        The tab provides a read-only QTextEdit showing generated code and a row of buttons:
+        - "Refresh": updates the code preview via main_window.refresh_code_preview
+        - "Save Generated Script": invokes the editor's save_script action
+        - "Export .ui": exports a Qt .ui file via main_window.export_ui_file
+        - "Smoke Test Generated Script": runs a compile smoke test via main_window.run_smoke_test
+        """
         tab = QWidget()
         v = QVBoxLayout(tab)
         self.code_preview = QTextEdit()
@@ -316,6 +403,11 @@ class PropertyEditor(QWidget):
         self.tabs.addTab(tab, "Code")
 
     def _assistant_tab(self):
+        """
+        Create and add the "Assistant" tab UI for composing prompts and displaying generated results.
+        
+        The tab includes a framework selector, a multi-line prompt editor, a read-only output display, and a "Generate from Prompt" button wired to `generate_from_prompt`. The prompt input has a placeholder guiding the user to describe desired UI and behavior.
+        """
         tab = QWidget()
         v = QVBoxLayout(tab)
         self.framework_combo = QComboBox()
@@ -335,6 +427,11 @@ class PropertyEditor(QWidget):
         self.tabs.addTab(tab, "Assistant")
 
     def _wire_updates(self):
+        """
+        Connect UI control change signals to the main window's design-change handler.
+        
+        Wires title, theme, button style, layout mode/position, grid columns, margin, and spacing controls so changes invoke self.main_window.on_design_change().
+        """
         for control, signal_name in [
             (self.window_title, "textChanged"),
             (self.theme, "currentTextChanged"),
@@ -348,6 +445,14 @@ class PropertyEditor(QWidget):
             getattr(control, signal_name).connect(self.main_window.on_design_change)
 
     def _pick_color(self, label: QLabel):
+        """
+        Open a color picker and apply the selected color to the provided label.
+        
+        If the user selects a valid color, sets the label's text to the color's hex code and updates its background stylesheet, then notifies the main window of a design change.
+        
+        Parameters:
+            label (QLabel): The label to update with the chosen color's hex value and background styling.
+        """
         color = QColorDialog.getColor()
         if color.isValid():
             label.setText(color.name())
@@ -355,11 +460,25 @@ class PropertyEditor(QWidget):
             self.main_window.on_design_change()
 
     def _layout_mode_sync(self, mode: str):
+        """
+        Synchronize layout-related controls with the selected layout mode and notify the main window of the change.
+        
+        Parameters:
+        	mode (str): The selected layout mode; enables the tab-position control when equal to `"Tabbed"` and enables the grid-columns control when equal to `"Grid"`.
+        """
         self.tab_pos.setEnabled(mode == "Tabbed")
         self.grid_cols.setEnabled(mode == "Grid")
         self.main_window.on_design_change()
 
     def add_widget(self, item: QListWidgetItem):
+        """
+        Add a new widget to the editor based on a catalog item.
+        
+        Creates a default widget spec using the item's text as the widget type, appends it to the editor's widget list, adds and selects a corresponding entry in the UI list, records the change in history, and triggers a design update.
+        
+        Parameters:
+            item (QListWidgetItem): Catalog list item whose text is used as the new widget's type and to generate its default name.
+        """
         widget = default_widget(item.text(), len(self.widgets) + 1)
         self.widgets.append(widget)
         self.widgets_list.addItem(f"{widget['type']} • {widget['name']}")
@@ -368,6 +487,11 @@ class PropertyEditor(QWidget):
         self.main_window.on_design_change()
 
     def remove_widget(self):
+        """
+        Remove the currently selected widget from the editor's widget list.
+        
+        If a widget is selected, removes its specification and list entry, records the change in history, and notifies the main window to update the design. If no widget is selected, does nothing.
+        """
         row = self.widgets_list.currentRow()
         if row < 0:
             return
@@ -377,12 +501,24 @@ class PropertyEditor(QWidget):
         self.main_window.on_design_change()
 
     def clear_widgets(self):
+        """
+        Remove all widgets from the editor and update application state.
+        
+        Clears the editor's internal widget list and its visible list, records the change in the undo history, and triggers a design update so the rest of the application reflects the cleared state.
+        """
         self.widgets.clear()
         self.widgets_list.clear()
         self.main_window.record_history()
         self.main_window.on_design_change()
 
     def _load_widget_properties(self, row: int):
+        """
+        Populate the property-editor controls with values from the widget specification at the given index.
+        
+        If `row` is out of range, the function does nothing. Missing widget keys are filled with sensible defaults: empty string for `placeholder`, 0/100 for `min`/`max`, and `False` for `required`.
+        Parameters:
+            row (int): Index of the widget in `self.widgets` whose properties should be loaded into the editor controls.
+        """
         if row < 0 or row >= len(self.widgets):
             return
         w = self.widgets[row]
@@ -394,6 +530,11 @@ class PropertyEditor(QWidget):
         self.prop_required.setChecked(bool(w.get("required", False)))
 
     def apply_widget_properties(self):
+        """
+        Apply edited property values to the currently selected widget.
+        
+        Updates the selected widget's spec fields (`name`, `label`, `placeholder`, `min`, `max`, `required`), refreshes the corresponding list item text, records the change in history, and triggers a design update. Does nothing if no widget is selected.
+        """
         row = self.widgets_list.currentRow()
         if row < 0 or row >= len(self.widgets):
             return
@@ -412,6 +553,11 @@ class PropertyEditor(QWidget):
         self.main_window.on_design_change()
 
     def apply_starter(self):
+        """
+        Apply the currently selected starter preset to the property editor and update the main window state.
+        
+        Updates window title, theme, layout type, grid column count, button style, and replaces the editor's widget list with the preset's widgets; repopulates the visible widgets list, records the change in history, and triggers a design update in the main window.
+        """
         starter = deepcopy(STARTER_PRESETS[self.starter_combo.currentText()])
         self.window_title.setText(starter.get("window_title", "My Custom GUI"))
         self.theme.setCurrentText(starter.get("theme", "Light"))
@@ -426,6 +572,11 @@ class PropertyEditor(QWidget):
         self.main_window.on_design_change()
 
     def save_script(self):
+        """
+        Prompt the user to choose a destination file and save the generated script that merges the current design with the loaded original script.
+        
+        If no original script has been loaded, shows a warning and does not open the file dialog.
+        """
         if not self.main_window.original_script_path:
             QMessageBox.warning(self, "No Script", "Drop a Python script first.")
             return
@@ -434,6 +585,11 @@ class PropertyEditor(QWidget):
             self.main_window.generate_merged_script(path)
 
     def generate_from_prompt(self):
+        """
+        Generate assistant output from the current prompt and display it in the assistant output widget.
+        
+        If the prompt input is empty, the method does nothing. Otherwise it reads the selected framework, requests generated text from the main window, and sets that text into the assistant output area.
+        """
         prompt = self.prompt_input.toPlainText().strip()
         if not prompt:
             return
@@ -442,6 +598,23 @@ class PropertyEditor(QWidget):
         self.assistant_output.setPlainText(generated)
 
     def design(self) -> dict[str, Any]:
+        """
+        Produce the current GUI design as a dictionary.
+        
+        Returns:
+            dict: A design dictionary with keys:
+                - "window_title": window title string
+                - "bg_color": background color string
+                - "accent_color": accent color string
+                - "theme": selected theme name
+                - "button_style": selected button stylesheet name
+                - "layout_type": layout mode name
+                - "tab_position": tab position name
+                - "grid_columns": number of grid columns (int)
+                - "margin": layout margin value (int)
+                - "spacing": layout spacing value (int)
+                - "widgets": a deep-copied list of widget specification dictionaries
+        """
         return {
             "window_title": self.window_title.text().strip() or "Custom GUI",
             "bg_color": self.bg_label.text(),
@@ -457,6 +630,23 @@ class PropertyEditor(QWidget):
         }
 
     def load_design(self, data: dict[str, Any]):
+        """
+        Apply a design dictionary to the editor UI, updating controls and the internal widget list.
+        
+        Parameters:
+            data (dict[str, Any]): Design data containing optional keys:
+                - "window_title" (str): Window title (default "Custom GUI").
+                - "bg_color" (str): Background color string (default "#ffffff").
+                - "accent_color" (str): Accent color string (default "#3498db").
+                - "theme" (str): Theme name (default "Light").
+                - "button_style" (str): Button stylesheet key (default "Default").
+                - "layout_type" (str): Layout mode, e.g. "Vertical" (default "Vertical").
+                - "tab_position" (str): Tab position for tabbed layouts (default "North").
+                - "grid_columns" (int): Number of grid columns (default 2).
+                - "margin" (int): Layout margin in pixels (default 10).
+                - "spacing" (int): Layout spacing in pixels (default 8).
+                - "widgets" (list[dict]): List of widget specification dicts; this list is deep-copied into the editor.
+        """
         self.window_title.setText(data.get("window_title", "Custom GUI"))
         self.bg_label.setText(data.get("bg_color", "#ffffff"))
         self.accent_label.setText(data.get("accent_color", "#3498db"))
@@ -476,6 +666,16 @@ class PropertyEditor(QWidget):
 
 class PreviewWindow(QWidget):
     def __init__(self, design: dict[str, Any]):
+        """
+        Create and show a live preview window that renders the given design.
+        
+        The preview applies the design's stylesheet, sets the window title and initial size, configures layout margins and spacing, displays the design's window title, instantiates and lays out each widget described in design["widgets"], and adds a watermark label.
+        
+        Parameters:
+            design (dict[str, Any]): Design dictionary containing at least the keys
+                "window_title", "margin", "spacing", and "widgets". Each entry in
+                "widgets" should be a widget-spec dictionary suitable for instantiation.
+        """
         super().__init__()
         self.setWindowTitle(f"Preview • {design['window_title']}")
         self.resize(700, 430)
@@ -499,6 +699,23 @@ class PreviewWindow(QWidget):
 
 
 def make_widget(widget: dict[str, Any]) -> QWidget:
+    """
+    Create a PyQt widget instance from a widget-spec dictionary.
+    
+    Parameters:
+        widget (dict): Specification for the widget. Required keys:
+            - "type" (str): Widget kind (e.g., "Label", "Button", "Line Edit",
+              "Text Edit", "Check Box", "Combo Box", "Spin Box", "Group Box").
+            Optional keys:
+            - "label" (str): Text label or placeholder fallback.
+            - "placeholder" (str): Placeholder text for text inputs.
+            - "min" (int|str): Minimum value for "Spin Box".
+            - "max" (int|str): Maximum value for "Spin Box".
+    
+    Returns:
+        QWidget: An instantiated and minimally configured QWidget matching the spec.
+        For unsupported types, returns a QLabel whose text starts with "Unsupported:".
+    """
     t = widget["type"]
     label = widget.get("label", t)
     if t == "Label":
@@ -533,6 +750,19 @@ def make_widget(widget: dict[str, Any]) -> QWidget:
 
 
 def build_layout(design: dict[str, Any], parent: QWidget):
+    """
+    Create and configure a Qt layout according to the provided design.
+    
+    Parameters:
+        design (dict[str, Any]): Design dictionary that must include:
+            - "layout_type": one of "Vertical", "Horizontal", or "Grid" (selects QVBoxLayout, QHBoxLayout, or QGridLayout).
+            - "margin": integer margin applied to all sides.
+            - "spacing": integer spacing between items.
+        parent (QWidget): Parent widget used when constructing the layout.
+    
+    Returns:
+        QLayout: A layout instance (QVBoxLayout, QHBoxLayout, or QGridLayout) configured with the specified margins and spacing.
+    """
     lt = design["layout_type"]
     if lt == "Horizontal":
         lay = QHBoxLayout(parent)
@@ -546,6 +776,20 @@ def build_layout(design: dict[str, Any], parent: QWidget):
 
 
 def build_stylesheet(design: dict[str, Any]) -> str:
+    """
+    Builds a Qt stylesheet string based on the provided design settings.
+    
+    Parameters:
+        design (dict): Design dictionary containing styling fields used to construct the stylesheet.
+            Expected keys:
+            - "bg_color": background color value (e.g., "#ffffff" or "rgba(...)").
+            - "accent_color": accent color value used for gradients.
+            - "theme": one of "Light", "Dark", "Gradient", or "Glass" to select base theme rules.
+            - "button_style": key looked up in STYLE_PRESETS to append button-specific styles.
+    
+    Returns:
+        stylesheet (str): Combined stylesheet text including theme rules, optional button styles, and watermark styling.
+    """
     bg = design["bg_color"]
     accent = design["accent_color"]
     theme_css = {
@@ -568,6 +812,11 @@ def build_stylesheet(design: dict[str, Any]) -> str:
 
 class MainWindow(QMainWindow):
     def __init__(self):
+        """
+        Create and initialize the main application window and its UI state.
+        
+        Initializes window title and size; sets up script-related state (original_script_path, original_code) and preview_window; prepares the undo/redo history structure. Builds the application menu and constructs the main splitter layout containing the drag-and-drop area, a design summary, watermark, and the PropertyEditor. Installs the splitter as the central widget, shows the status bar license/author message, records the initial history snapshot, and triggers an initial design update.
+        """
         super().__init__()
         self.setWindowTitle("GUI Designer")
         self.resize(1360, 900)
@@ -607,6 +856,21 @@ class MainWindow(QMainWindow):
         self.on_design_change()
 
     def _build_menu(self):
+        """
+        Create the application's File and Edit menus and wire their actions to MainWindow handlers.
+        
+        This adds a "File" menu with actions:
+        - "Save Project" -> save_project
+        - "Load Project" -> load_project
+        - "Export Template (JSON)" -> export_template("json")
+        - "Import Template (JSON)" -> import_template("json")
+        - "Export Template (YAML)" -> export_template("yaml")
+        - "Import Template (YAML)" -> import_template("yaml")
+        
+        And an "Edit" menu with actions:
+        - "Undo" (Ctrl+Z) -> undo
+        - "Redo" (Ctrl+Y) -> redo
+        """
         file_menu = self.menuBar().addMenu("File")
 
         save_project = file_menu.addAction("Save Project")
@@ -633,15 +897,31 @@ class MainWindow(QMainWindow):
         redo.triggered.connect(self.redo)
 
     def load_script(self, path: str):
+        """
+        Load a Python script file into the window state and refresh the design view.
+        
+        Parameters:
+            path (str): Path to a Python (.py) file. The file is read using UTF-8 and its contents are stored as the current original script.
+        """
         self.original_script_path = path
         self.original_code = Path(path).read_text(encoding="utf-8")
         self.on_design_change()
 
     def open_live_preview(self):
+        """
+        Open the live preview window for the editor's current design.
+        
+        Creates a PreviewWindow for the editor's design and shows it, storing the instance on `self.preview_window`.
+        """
         self.preview_window = PreviewWindow(self.editor.design())
         self.preview_window.show()
 
     def on_design_change(self):
+        """
+        Update the UI to reflect the current design state.
+        
+        Sets the summary label to a concise overview of the current design (window title, theme, layout, widget count, and whether a script is loaded), updates the preview JSON text with the full design, and refreshes the generated code preview.
+        """
         d = self.editor.design()
         self.summary.setText(
             "\n".join(
@@ -658,6 +938,15 @@ class MainWindow(QMainWindow):
         self.refresh_code_preview()
 
     def current_project(self) -> dict[str, Any]:
+        """
+        Return a snapshot of the current project state suitable for history or serialization.
+        
+        Returns:
+            project (dict): A mapping with keys:
+                - "original_script_path" (str | None): Path of the loaded original Python script, or None if not set.
+                - "original_code" (str | None): Contents of the loaded original script, or None if not set.
+                - "design" (dict): Current design dictionary as returned by the editor's `design()` method.
+        """
         return {
             "original_script_path": self.original_script_path,
             "original_code": self.original_code,
@@ -665,12 +954,31 @@ class MainWindow(QMainWindow):
         }
 
     def apply_project(self, project: dict[str, Any]):
+        """
+        Restore the application's state from a project snapshot.
+        
+        Parameters:
+            project (dict[str, Any]): Project snapshot containing optional keys:
+                - "original_script_path": path to the loaded original script (or None).
+                - "original_code": source code string of the original script.
+                - "design": design dictionary describing window, theme, layout, and widgets.
+        
+        This method updates the stored original script path and code, loads the provided design into the editor, and refreshes the UI to reflect the restored state.
+        """
         self.original_script_path = project.get("original_script_path")
         self.original_code = project.get("original_code", "")
         self.editor.load_design(project.get("design", {}))
         self.on_design_change()
 
     def record_history(self):
+        """
+        Record the current project state in the undo/redo history.
+        
+        Creates a deep copy of current_project() and appends it to the internal history stack,
+        truncating any forward history if the user was not at the latest snapshot. If the
+        latest snapshot already matches the current project state, no change is made.
+        Updates self.history and sets self.history_index to point to the new snapshot.
+        """
         snap = deepcopy(self.current_project())
         if self.history_index >= 0 and self.history_index < len(self.history):
             if snap == self.history[self.history_index]:
@@ -680,18 +988,33 @@ class MainWindow(QMainWindow):
         self.history_index = len(self.history) - 1
 
     def undo(self):
+        """
+        Move one step back in the undo history and restore the corresponding project snapshot.
+        
+        If already at the earliest history entry, the method does nothing. The current history index is decremented and the project snapshot at the new index is deep-copied and applied via apply_project.
+        """
         if self.history_index <= 0:
             return
         self.history_index -= 1
         self.apply_project(deepcopy(self.history[self.history_index]))
 
     def redo(self):
+        """
+        Advance the undo/redo history to the next snapshot and apply it to the editor.
+        
+        If already at the most recent history entry, this method does nothing. The next project snapshot is deep-copied and applied via apply_project.
+        """
         if self.history_index >= len(self.history) - 1:
             return
         self.history_index += 1
         self.apply_project(deepcopy(self.history[self.history_index]))
 
     def save_project(self):
+        """
+        Prompt the user to choose a .gdp.json file and save the current project state to disk.
+        
+        If the user cancels the file dialog, no action is taken. When a path is chosen, the method writes the JSON-serialized result of current_project() to the selected file using UTF-8 encoding and shows an informational message indicating the save location.
+        """
         path, _ = QFileDialog.getSaveFileName(self, "Save Project", "", "GUI Designer Project (*.gdp.json)")
         if not path:
             return
@@ -699,6 +1022,11 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "Saved", f"Project saved to:\n{path}")
 
     def load_project(self):
+        """
+        Load a .gdp.json project file, apply its state to the editor, and record it in the undo history.
+        
+        Opens a file dialog filtered to "GUI Designer Project (*.gdp.json)". If a file is selected, parses its JSON contents, applies the project via apply_project(), and then records the snapshot via record_history().
+        """
         path, _ = QFileDialog.getOpenFileName(self, "Load Project", "", "GUI Designer Project (*.gdp.json)")
         if not path:
             return
@@ -707,6 +1035,13 @@ class MainWindow(QMainWindow):
         self.record_history()
 
     def export_template(self, fmt: str):
+        """
+        Export the current editor design as a JSON or YAML template via a file save dialog.
+        
+        If `fmt` is "json", opens a JSON save dialog and writes the design as pretty-printed JSON. For other values, requires PyYAML; if PyYAML is not available a warning dialog is shown. When PyYAML is available, opens a YAML save dialog and writes the design as YAML.
+        Parameters:
+            fmt (str): Target format, expected values are "json" or "yaml" (or any non-"json" value to trigger YAML behavior).
+        """
         design = self.editor.design()
         if fmt == "json":
             path, _ = QFileDialog.getSaveFileName(self, "Export JSON Template", "", "JSON (*.json)")
@@ -725,6 +1060,14 @@ class MainWindow(QMainWindow):
             Path(path).write_text(yaml.safe_dump(design, sort_keys=False), encoding="utf-8")
 
     def import_template(self, fmt: str):
+        """
+        Import a design template from a JSON or YAML file and apply it to the editor.
+        
+        Loads a design dictionary from a file chosen by the user, applies it to the property editor, records the change in history, and updates the UI state. If `fmt` is "yaml" and the PyYAML dependency is missing, displays a warning dialog and does not proceed.
+        
+        Parameters:
+        	fmt (str): Template format to import; supported values are "json" and "yaml".
+        """
         if fmt == "json":
             path, _ = QFileDialog.getOpenFileName(self, "Import JSON Template", "", "JSON (*.json)")
             if not path:
@@ -746,15 +1089,31 @@ class MainWindow(QMainWindow):
         self.on_design_change()
 
     def refresh_code_preview(self):
+        """
+        Update the code preview panel with freshly generated GUI code.
+        
+        Generates Python source from the current editor design and the loaded original script, then sets the editor's read-only code preview text to that source. If the generated source exceeds 15,000 characters it is truncated and a "# ... truncated" marker is appended.
+        """
         code = self.generate_gui_code(self.editor.design(), self.original_code)
         self.editor.code_preview.setPlainText(code[:15000] + ("\n# ... truncated" if len(code) > 15000 else ""))
 
     def generate_merged_script(self, output_path: str):
+        """
+        Write the combined GUI script (generated from the current design and the embedded original script) to the specified filesystem path and inform the user.
+        
+        Parameters:
+            output_path (str): Path where the generated Python script will be written.
+        """
         code = self.generate_gui_code(self.editor.design(), self.original_code)
         Path(output_path).write_text(code, encoding="utf-8")
         QMessageBox.information(self, "Saved", f"Generated script saved to:\n{output_path}")
 
     def export_ui_file(self):
+        """
+        Export the current design to a minimal Qt Designer .ui file.
+        
+        Opens a save dialog; if a path is chosen, writes a UTF-8 encoded .ui XML file that sets the main window title, creates a central widget with a vertical layout, and emits one `<widget>` entry per design widget (widget class chosen from a small mapping of supported types; the widget's label is written as its tooltip). Shows a confirmation message after successful write.
+        """
         path, _ = QFileDialog.getSaveFileName(self, "Export Qt Designer UI", "", "Qt Designer UI (*.ui)")
         if not path:
             return
@@ -802,6 +1161,13 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "Exported", f".ui file exported to:\n{path}")
 
     def run_smoke_test(self):
+        """
+        Performs a smoke test by compiling the currently generated GUI script and notifying the user of the result.
+        
+        Writes the generated code to a temporary file, runs the Python bytecode compiler on it, and displays a QMessageBox:
+        - on success, shows an informational dialog stating the generated script compiles;
+        - on failure, shows a critical dialog containing the compiler error output.
+        """
         generated = self.generate_gui_code(self.editor.design(), self.original_code)
         with tempfile.TemporaryDirectory() as tmp:
             p = Path(tmp) / "generated.py"
@@ -818,6 +1184,16 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Smoke Test Failed", result.stderr or result.stdout or "Unknown error")
 
     def generate_prompt_result(self, prompt: str, framework: str) -> str:
+        """
+        Produce a UI code snippet or full generated script based on the given prompt and target framework.
+        
+        Parameters:
+            prompt (str): The user-provided prompt that guides generation.
+            framework (str): Target framework identifier; recognized values are "ImGui" and "Generic GUI". Any other value falls back to PyQt6 code generation.
+        
+        Returns:
+            str: For "ImGui", a small pyimgui-compatible skeleton embedding the prompt; for "Generic GUI", a short concept/stub string; otherwise the complete PyQt6 script generated from the current editor design and embedded original code.
+        """
         if framework == "ImGui":
             return (
                 "# ImGui skeleton generated from prompt\n"
@@ -837,6 +1213,16 @@ class MainWindow(QMainWindow):
         return self.generate_gui_code(self.editor.design(), self.original_code)
 
     def generate_gui_code(self, design: dict[str, Any], original_code: str) -> str:
+        """
+        Generate a complete Python script that builds a PyQt6 GUI from the provided design and embeds the original script.
+        
+        Parameters:
+            design (dict[str, Any]): Design dictionary describing window properties, theme, layout, margins/spacing, and a list of widget specifications under the "widgets" key.
+            original_code (str): Source code of the original script to embed and execute from the generated script.
+        
+        Returns:
+            str: A Python source string which, when written to a file, implements a runnable PyQt6 application that renders the design, wires Button widgets to call an embedded runner for the original script, and exposes an entrypoint `main()`.
+        """
         widgets = design["widgets"] or [default_widget("Label", 1)]
 
         create_lines: list[str] = []
@@ -950,6 +1336,11 @@ if __name__ == "__main__":
 
 
 def main():
+    """
+    Start the Qt application, create and show the main designer window, and run the event loop until exit.
+    
+    This initializes QApplication, instantiates MainWindow, shows it, and enters the Qt event loop; the process exits when the event loop finishes.
+    """
     app = QApplication(sys.argv)
     win = MainWindow()
     win.show()
