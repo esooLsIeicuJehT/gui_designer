@@ -90,9 +90,19 @@ The script is intentionally structured so you can keep pushing it further:
 
 ```text
 .
+├── .gitignore
+├── README.md
+├── conftest.py
+├── gui_designer.py
 ├── scriptforge_studio.py
-└── README.md
+└── test_gui_designer.py
 ```
+
+Notes:
+- `scriptforge_studio.py` is the main application entrypoint.
+- `gui_designer.py` is a backward-compatible wrapper for older imports and launch paths.
+- `conftest.py` and `test_gui_designer.py` contain the pytest test suite.
+- `__pycache__/` and `.pytest_cache/` are generated locally and ignored.
 
 ---
 
