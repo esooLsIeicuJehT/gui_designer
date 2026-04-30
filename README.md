@@ -1,173 +1,193 @@
-# GUI Designer for Python Scripts (PyQt6)
+# ScriptForge Studio (PyQt6)
 
-A drag-and-drop desktop app to wrap existing Python scripts with a customizable GUI, preview changes live, and generate production-ready output code.
+A drag-and-drop GUI builder that lets you load any Python script, design a custom PyQt6 interface, and generate a merged output script.
 
-## What’s New (Major Upgrades)
-
-This version adds the features requested in review:
-
-- JSON/YAML template import/export for design presets.
-- Undo/redo history for layout and widget edits.
-- Per-widget component property editor (name, label, placeholder, min/max, required validation flag).
-- Qt Designer `.ui` export support.
-- Built-in smoke-test harness for generated scripts (`py_compile`).
-- Starter templates (3 non-basic and fully different presets).
-- Save/load full project sessions so users can resume later.
-- Assistant tab with prompt box and multi-target generation mode (`PyQt6`, `Generic GUI`, `ImGui` skeleton).
-- Ownership watermark + proprietary licensing metadata.
+This project focuses on **high customization** and **extensible combinations**:
+- multiple layout modes (Vertical, Horizontal, Grid, Tabbed),
+- rich style controls (themes, colors, button presets, optional hover transitions),
+- expandable widget palette,
+- live preview dialog,
+- generated code preview + save flow.
 
 ---
 
-## Key Features
+## Features
 
-### 1) Script + Project Workflow
-- Drop a `.py` file in the main panel.
-- Save project sessions as `.gdp.json`.
-- Load previous sessions and continue editing.
+### Script ingestion
+- Drag and drop any `.py` file into the drop zone.
+- The dropped file becomes the “original script” payload and is appended to the generated script.
 
-### 2) Design Presets and Templates
-- Export/import **JSON** templates from File menu.
-- Export/import **YAML** templates (requires `PyYAML`).
-- Starter presets included:
-  - **Data Dashboard**
-  - **Neon Game Launcher**
-  - **Glass CRM Panel**
+### Design controls
+- **Style tab**:
+  - Window title
+  - Header banner toggle + custom header text
+  - Background and accent color pickers
+  - Global font picker
+  - Theme mode (`Light`, `Dark`, `Gradient`, `Contrast`)
+  - Button style presets (`Default`, `Flat`, `Modern`, `Rounded`, `Neon`)
+  - Animation toggle for hover-style transitions
 
-### 3) Layout + Widget Authoring
-- Layout modes: Vertical, Horizontal, Grid, Tabbed.
-- Property controls for margin, spacing, grid columns, tab position.
-- Widget palette with live component editor.
-- Widget-level fields:
-  - Name
-  - Label/Text
-  - Placeholder
-  - Min / Max
-  - Required toggle
+- **Layout tab**:
+  - Main layout type (`Vertical`, `Horizontal`, `Grid`, `Tabbed`)
+  - Tab position (`North`, `South`, `West`, `East`) for tabbed mode
+  - Grid column count for grid mode
+  - Margin and spacing controls
 
-### 4) Undo/Redo
-- Built-in history snapshots for design/project mutations.
-- Menu shortcuts:
-  - `Ctrl+Z` Undo
-  - `Ctrl+Y` Redo
+- **Widgets tab**:
+  - Double-click to add widgets from a larger palette:
+    - Label
+    - Button
+    - Line Edit
+    - Text Edit
+    - Check Box
+    - Combo Box
+    - Slider
+    - Spin Box
+    - Group Box
+    - Table
+  - Optional custom label for each new widget
+  - Remove selected or clear all
 
-### 5) Export + Validation
-- Generate merged script with selectable target in Code tab:
-  - `PyQt6`
-  - `ImGui`
-  - `Generic GUI`
-- Export Qt Designer `.ui` file.
-- Run smoke test (compilation check) on generated output.
-
-### 6) Assistant Tab (Prompt-Based)
-- Framework targets:
-  - `PyQt6` (full generated output)
-  - `Generic GUI` (conceptual layout)
-  - `ImGui` (starter draw function skeleton)
-
-> Note: ImGui output is a starting scaffold and expects runtime integration (e.g., pyimgui/glfw).
+### Preview + generation
+- **Preview tab**:
+  - text summary of current design state
+  - one-click live preview window
+- **Code tab**:
+  - refreshable generated code preview
+  - save merged script output
+  - generated output embeds the dropped script as a source string and executes it in an isolated namespace (`__embedded_script__`), then attempts to call `main()` or `run()` if present
 
 ---
 
-## Installation
+## Endless customization ideas (extending this project)
 
-```bash
-pip install -r requirements.txt
+The script is intentionally structured so you can keep pushing it further:
+
+1. **Add more widgets** in `PropertyEditor.AVAILABLE_WIDGETS`, `PreviewDialog._make_widget`, and `MainWindow._format_widget_creation`.
+   - Suggested additions: Date picker, progress bar, list view, tree view, canvas widgets, media widgets.
+
+2. **Add more style options** in:
+   - `STYLE_PRESETS` for component-level presets,
+   - `PreviewDialog._build_stylesheet` for full-theme CSS blocks.
+   - Suggested additions: glassmorphism, animated gradients, custom icon packs, per-widget styles.
+
+3. **Add advanced layout patterns** in `PreviewDialog._build_widget_area` and `MainWindow.generate_gui_code`.
+   - Suggested additions: nested split layouts, dock-style panels, flow layouts, responsive breakpoints.
+
+4. **Improve real-time preview behavior**:
+   - Keep one preview window open and hot-reload it on each change.
+   - Persist control state between refreshes.
+   - Add an embedded preview canvas mode.
+
+5. **Enhance Python-script integration**:
+   - Parse and auto-detect candidate entry points (`main`, class methods, CLI wrappers).
+   - Generate execution adapters for scripts with arguments.
+   - Add sandboxed execution mode with stdout/stderr logging panel.
+
+---
+
+## Project structure
+
+```text
+.
+├── .gitignore
+├── README.md
+├── conftest.py
+├── gui_designer.py
+├── scriptforge_studio.py
+└── test_gui_designer.py
 ```
 
-Run:
+Notes:
+- `scriptforge_studio.py` is the main application entrypoint.
+- `gui_designer.py` is a backward-compatible wrapper for older imports and launch paths.
+- `conftest.py` and `test_gui_designer.py` contain the pytest test suite.
+- `__pycache__/` and `.pytest_cache/` are generated locally and ignored.
+
+---
+
+## How to Run
+
+Install dependencies (PyQt6):
 
 ```bash
-python gui_designer.py
+pip install PyQt6
 ```
 
----
+Save the script as `scriptforge_studio.py`.
 
-## File Menu Features
+Run it:
 
-- Save Project (`.gdp.json`)
-- Load Project (`.gdp.json`)
-- Export Template (JSON)
-- Import Template (JSON)
-- Export Template (YAML)
-- Import Template (YAML)
+```bash
+python scriptforge_studio.py
+```
 
-## Helper scripts added
-
-- `start.py` interactive setup/start wizard:
-  - asks OS (`Windows` / `Linux` / `macOS`)
-  - on Linux, asks distro family
-  - asks preferred install/run path (`Python`, `Docker`, `PyInstaller`, packaging notes)
-  - installs requirements and can run selected build/start commands interactively
-- `build.sh` build helper for PyInstaller, Docker, or RPM guidance
-- `Makefile` shortcuts:
-  - `make install`
-  - `make run`
-  - `make smoke`
-  - `make build`
-- `requirements.txt` bundles required + optional framework deps (`PyQt6`, `PyYAML`, `pyimgui`, `glfw`)
-
-## Edit Menu Features
-
-- Undo (`Ctrl+Z`)
-- Redo (`Ctrl+Y`)
+Drop any `.py` file into the central area.
+Then use the side tabs to customize the GUI (colors, fonts, layout, widgets).
+Finally, go to the Code tab and click **Save Generated Script** – it will produce a new Python file that merges your original logic with the designed GUI.
 
 ---
 
-## How generated scripts run original logic
+## Building an Installable Package
 
-Generated output embeds the dropped source code in `ORIGINAL_SCRIPT`, executes it in namespace `__embedded_script__`, and attempts to call `main()` then `run()` if present.
+### Docker Image
 
----
-
-## Proprietary watermarking + licensing
-
-- Main app and generated scripts include watermark text with owner contact.
-- License restrictions are declared in `LICENSE`.
-
-Copyright © 2026 Justin Lorenc  
-Contact: `midnight-repo@engineer.com`
-
----
-
-## Packaging snippets
-
-### Docker
+Create a Dockerfile:
 
 ```dockerfile
-FROM python:3.11-slim
-RUN pip install PyQt6 pyyaml
+FROM python:3.10-slim
+RUN pip install PyQt6
 WORKDIR /app
-COPY gui_designer.py /app/
-CMD ["python", "gui_designer.py"]
+COPY scriptforge_studio.py /app/
+CMD ["python", "scriptforge_studio.py"]
 ```
 
-### Standalone build (example)
+Build and run:
+
+```bash
+docker build -t scriptforge-studio .
+docker run -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix scriptforge-studio
+```
+
+(You may need to allow X11 forwarding.)
+
+### RPM Package
+
+Use pyinstaller to create a standalone executable, then package it.
 
 ```bash
 pip install pyinstaller
-pyinstaller --onefile --windowed gui_designer.py
+pyinstaller --onefile --windowed scriptforge_studio.py
+```
+
+Then use `fpm` or `rpmbuild` to create an RPM.
+
+Current packaged artifact name:
+
+```text
+dist/ScriptForge-Studio.zip
 ```
 
 ---
 
-## Smoke testing generated output
+## Suggested next upgrades
 
-Use the **Smoke Test Generated Script** button in the Code tab.
-
-It writes a temporary generated file and runs:
-
-```bash
-python -m py_compile <temp_generated.py>
-```
-
-You can also validate the app itself:
-
-```bash
-make smoke
-```
+- Add JSON/YAML template import/export for design presets.
+- Add undo/redo history for layout edits.
+- Add component property editor per widget (name, placeholder, min/max, validation).
+- Support Qt Designer `.ui` export mode.
+- Add testing harness for generated script smoke checks.
 
 ---
 
-## Notes on “can’t be copied/sold”
+## Troubleshooting
 
-Watermarks and license notices strongly improve attribution and legal position, but no client-side code can absolutely prevent copying. Pair this with legal terms, distribution tracking, and (if needed) server-side license checks.
+- **PyQt6 install fails**: upgrade pip first (`python -m pip install --upgrade pip`) and retry.
+- **No display in Docker/Linux**: ensure display forwarding and X11 permissions are configured.
+- **Generated script does not run original logic**: adapt `original_main()` and callback wiring to your script’s real entry point.
+
+---
+
+## License
+
+Add your preferred license (MIT, Apache-2.0, etc.) to clarify usage permissions.
