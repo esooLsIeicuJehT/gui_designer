@@ -1,0 +1,4 @@
+PyQt6>=6.6
+PyYAML>=6.0
+pyimgui>=2.0.0
+glfw>=2.7
